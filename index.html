@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>COSMOOD — Your Daily Cosmic Mood</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0e0b0b;
+      --paper: #f0ebe0;
+      --gold: #c9a84c;
+      --rust: #b84a2a;
+      --mist: #8b9aaa;
+      --deep: #1a1228;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'Cormorant Garamond', serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: crosshair;
+    }
+
+    /* Grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 100;
+      opacity: 0.5;
+    }
+
+    /* Stars canvas */
+    #stars {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.07;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 60px 32px 80px;
+    }
+
+    /* Header */
+    .masthead {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      border-top: 3px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+      padding: 10px 0;
+      margin-bottom: 72px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease forwards;
+    }
+
+    .masthead-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+    }
+
+    .masthead-date {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--mist);
+      letter-spacing: 0.1em;
+    }
+
+    /* Big headline */
+    .headline {
+      font-size: clamp(56px, 10vw, 96px);
+      font-weight: 300;
+      line-height: 0.92;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+      opacity: 0;
+      animation: fadeUp 0.9s 0.2s ease forwards;
+    }
+
+    .headline em {
+      font-style: italic;
+      color: var(--rust);
+    }
+
+    .subline {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.25em;
+      color: var(--mist);
+      text-transform: uppercase;
+      margin-bottom: 60px;
+      opacity: 0;
+      animation: fadeUp 0.9s 0.35s ease forwards;
+    }
+
+    /* Divider */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 48px;
+      opacity: 0;
+      animation: fadeUp 0.9s 0.5s ease forwards;
+    }
+
+    .divider-line { flex: 1; height: 1px; background: var(--ink); opacity: 0.2; }
+    .divider-glyph { font-size: 20px; color: var(--gold); }
+
+    /* Mood card */
+    .mood-card {
+      border: 1px solid var(--ink);
+      padding: 48px 40px;
+      position: relative;
+      margin-bottom: 48px;
+      opacity: 0;
+      animation: fadeUp 1s 0.65s ease forwards;
+      overflow: hidden;
+    }
+
+    .mood-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--gold);
+    }
+
+    .mood-card::after {
+      content: attr(data-symbol);
+      position: absolute;
+      right: 32px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 120px;
+      opacity: 0.04;
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    .mood-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 16px;
+    }
+
+    .mood-title {
+      font-size: clamp(32px, 5vw, 52px);
+      font-weight: 600;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+
+    .mood-title em { font-style: italic; font-weight: 300; }
+
+    .mood-body {
+      font-size: 18px;
+      line-height: 1.75;
+      font-weight: 300;
+      max-width: 520px;
+      color: #2a2320;
+    }
+
+    /* Stats row */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--ink);
+      border: 1px solid var(--ink);
+      margin-bottom: 48px;
+      opacity: 0;
+      animation: fadeUp 1s 0.8s ease forwards;
+    }
+
+    .stat {
+      background: var(--paper);
+      padding: 24px 20px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 300;
+      font-style: italic;
+      color: var(--rust);
+      display: block;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--mist);
+    }
+
+    /* Mantra */
+    .mantra-block {
+      border-top: 1px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+      padding: 32px 0;
+      text-align: center;
+      margin-bottom: 48px;
+      opacity: 0;
+      animation: fadeUp 1s 0.95s ease forwards;
+    }
+
+    .mantra-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: var(--mist);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .mantra-text {
+      font-size: clamp(22px, 4vw, 36px);
+      font-style: italic;
+      font-weight: 300;
+      line-height: 1.4;
+      letter-spacing: 0.01em;
+    }
+
+    /* Refresh button */
+    .refresh-btn {
+      display: block;
+      margin: 0 auto;
+      background: var(--ink);
+      color: var(--paper);
+      border: none;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      padding: 16px 40px;
+      cursor: crosshair;
+      transition: background 0.2s, color 0.2s;
+      opacity: 0;
+      animation: fadeUp 1s 1.1s ease forwards;
+    }
+
+    .refresh-btn:hover {
+      background: var(--gold);
+      color: var(--ink);
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 64px;
+      padding-top: 20px;
+      border-top: 1px solid var(--ink);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      opacity: 0;
+      animation: fadeUp 1s 1.2s ease forwards;
+    }
+
+    .footer-note {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--mist);
+      letter-spacing: 0.1em;
+    }
+
+    /* Animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Mood change animation */
+    .mood-card.refreshing {
+      animation: blink 0.3s ease;
+    }
+
+    @keyframes blink {
+      0%   { opacity: 1; }
+      50%  { opacity: 0.1; }
+      100% { opacity: 1; }
+    }
+
+    @media (max-width: 520px) {
+      .stats { grid-template-columns: 1fr; }
+      .mood-card { padding: 32px 24px; }
+      .page { padding: 40px 20px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<div class="page">
+
+  <div class="masthead">
+    <span class="masthead-title">COSMOOD</span>
+    <span class="masthead-date" id="today-date"></span>
+  </div>
+
+  <h1 class="headline">Your <em>cosmic</em><br>mood today</h1>
+  <p class="subline">Channelled from the universe at this exact moment</p>
+
+  <div class="divider">
+    <div class="divider-line"></div>
+    <span class="divider-glyph">✦</span>
+    <div class="divider-line"></div>
+  </div>
+
+  <div class="mood-card" id="mood-card" data-symbol="◯">
+    <div class="mood-label" id="mood-label">Today's Frequency</div>
+    <h2 class="mood-title" id="mood-title">Loading the cosmos…</h2>
+    <p class="mood-body" id="mood-body"></p>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-value" id="stat-energy">—</span>
+      <span class="stat-label">Energy Level</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="stat-element">—</span>
+      <span class="stat-label">Element</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="stat-hour">—</span>
+      <span class="stat-label">Cosmic Hour</span>
+    </div>
+  </div>
+
+  <div class="mantra-block">
+    <div class="mantra-label">Your Mantra</div>
+    <div class="mantra-text" id="mantra-text">&nbsp;</div>
+  </div>
+
+  <button class="refresh-btn" onclick="refreshMood()">↻ &nbsp; Recalibrate</button>
+
+  <div class="footer">
+    <span class="footer-note">VOL. 1 — FREE EDITION</span>
+    <span class="footer-note">COSMOOD.GITHUB.IO</span>
+  </div>
+
+</div>
+
+<script>
+  const moods = [
+    {
+      title: "The Wandering <em>Architect</em>",
+      body: "You are not lost — you are surveying. Today your mind builds cathedrals from half-formed thoughts. Let the blueprint stay smudged a little longer. Precision will come. Right now, the act of imagining is the work.",
+      label: "Creative Frequency",
+      energy: "87%",
+      element: "Air",
+      mantra: "I build what does not yet exist.",
+      symbol: "△"
+    },
+    {
+      title: "Still <em>Water</em>, Deep Current",
+      body: "On the surface, nothing. Beneath, everything moves. Today you are the lake in October — cold, clear, impossibly deep. Others may misread your quiet as absence. Let them. You are everywhere at once.",
+      label: "Depth Frequency",
+      energy: "42%",
+      element: "Water",
+      mantra: "Stillness is not emptiness.",
+      symbol: "◯"
+    },
+    {
+      title: "The <em>Restless</em> Cartographer",
+      body: "You are drawing maps of places that don't exist yet — but will. There's an itch behind your eyes today, a pull toward the unmapped edge of things. Follow the discomfort. It knows something your comfort doesn't.",
+      label: "Exploration Frequency",
+      energy: "94%",
+      element: "Fire",
+      mantra: "The edge is where the good stuff lives.",
+      symbol: "→"
+    },
+    {
+      title: "Between <em>Two</em> Moons",
+      body: "Neither here nor there. You're in the sacred pause between one chapter and another. The world wants you to decide, but today is not for deciding — it is for sitting with both possibilities until one of them starts glowing.",
+      label: "Liminal Frequency",
+      energy: "58%",
+      element: "Ether",
+      mantra: "The threshold is a room, not a hallway.",
+      symbol: "◑"
+    },
+    {
+      title: "The <em>Bright</em> Pragmatist",
+      body: "Today you are sharp, useful, and surprisingly funny about it. The stars have aligned in a very practical formation — rare and underrated. Make the list. Send the email. Fix the thing. Then take the long way home.",
+      label: "Clarity Frequency",
+      energy: "76%",
+      element: "Earth",
+      mantra: "Good work is its own kind of magic.",
+      symbol: "◆"
+    },
+    {
+      title: "Soft <em>Rebellion</em>",
+      body: "You are done performing enthusiasm you don't feel. Today, something quiet in you refuses. Not loudly — just firmly, the way a river refuses to run uphill. Honor that small no. It's smarter than the yes that preceded it.",
+      label: "Resistance Frequency",
+      energy: "63%",
+      element: "Earth",
+      mantra: "A quiet no is still a no.",
+      symbol: "⊘"
+    },
+    {
+      title: "The <em>Luminous</em> Overthinker",
+      body: "Your brain is a chandelier today — blazing, beautiful, and slightly too much for the room. Every thought spawns three more. Instead of quieting the noise, conduct it. There's a symphony in there if you stop apologising for the volume.",
+      label: "Hyperactive Frequency",
+      energy: "99%",
+      element: "Fire",
+      mantra: "The mind that won't slow down is also the one that won't stop finding.",
+      symbol: "✦"
+    },
+    {
+      title: "Ancient <em>Patience</em>",
+      body: "You are older than your age today. Something in you knows how to wait — genuinely, without urgency or resentment. The universe is rearranging things on your behalf. You don't need to help. You don't even need to watch.",
+      label: "Timeless Frequency",
+      energy: "31%",
+      element: "Water",
+      mantra: "Trust the slow work of time.",
+      symbol: "∞"
+    }
+  ];
+
+  let currentIndex = -1;
+
+  function getMoodIndex() {
+    const now = new Date();
+    const seed = now.getFullYear() * 10000 + (now.getMonth()+1) * 100 + now.getDate()
+               + now.getHours();
+    return seed % moods.length;
+  }
+
+  function refreshMood() {
+    let next;
+    do { next = Math.floor(Math.random() * moods.length); }
+    while (next === currentIndex);
+    currentIndex = next;
+    renderMood(moods[next], true);
+  }
+
+  function renderMood(mood, animate) {
+    const card = document.getElementById('mood-card');
+    if (animate) {
+      card.classList.add('refreshing');
+      setTimeout(() => card.classList.remove('refreshing'), 300);
+    }
+    document.getElementById('mood-label').textContent = mood.label;
+    document.getElementById('mood-title').innerHTML = mood.title;
+    document.getElementById('mood-body').textContent = mood.body;
+    document.getElementById('stat-energy').textContent = mood.energy;
+    document.getElementById('stat-element').textContent = mood.element;
+    document.getElementById('mantra-text').textContent = '"' + mood.mantra + '"';
+    card.setAttribute('data-symbol', mood.symbol);
+
+    const now = new Date();
+    document.getElementById('stat-hour').textContent =
+      now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+  }
+
+  function init() {
+    // Date
+    const now = new Date();
+    document.getElementById('today-date').textContent =
+      now.toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+    // Set mood
+    currentIndex = getMoodIndex();
+    renderMood(moods[currentIndex], false);
+
+    // Stars
+    drawStars();
+  }
+
+  function drawStars() {
+    const canvas = document.getElementById('stars');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    ctx.fillStyle = '#0e0b0b';
+    for (let i = 0; i < 200; i++) {
+      const x = Math.random() * canvas.width;
+      const y = Math.random() * canvas.height;
+      const r = Math.random() * 1.2;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  window.addEventListener('resize', drawStars);
+  init();
+</script>
+</body>
+</html>
